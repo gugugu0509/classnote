@@ -1,0 +1,22 @@
+# 运行产物与依赖
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 上传/生成的业务数据（不入库）
+uploads/
+mindmaps/
+data/
+*.zip
+*.log
+
+# 凭据（一律不入库，走环境变量或外部文件）
+.env
+*_api_key.txt
+*_key.txt
+secrets.*
+
+# 系统
+.DS_Store
+Thumbs.db

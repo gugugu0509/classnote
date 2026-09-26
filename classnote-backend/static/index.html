@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#4f46e5">
+<link rel="manifest" href="/app/manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="/app/icon-192.png">
+<link rel="apple-touch-icon" href="/app/icon-192.png">
+<title>课堂笔记助手</title>
+<style>
+:root {
+  --bg: #f8f9fa;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --sub: #6b7280;
+  --accent: #4f46e5;
+  --accent-light: #e0e7ff;
+  --danger: #ef4444;
+  --success: #10b981;
+  --border: #e5e7eb;
+  --radius: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 100px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 顶部导航 */
+nav {
+  position: sticky; top:0; z-index:10;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display:flex;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+nav button {
+  flex:1;
+  padding: 12px 8px;
+  border:none; background:none;
+  font-size: 15px;
+  color: var(--sub);
+  border-radius: 12px;
+  cursor:pointer;
+  transition: all .2s;
+  font-weight: 500;
+}
+nav button.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 页面容器 */
+.page { display:none; padding: 0 16px; }
+.page.active { display:block; }
+
+/* 卡片 */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.card h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+
+/* 录音按钮 */
+.record-area {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding: 40px 0;
+}
+.record-btn {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  border: 4px solid var(--accent);
+  background: var(--accent-light);
+  cursor: pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition: all .2s;
+  position: relative;
+}
+.record-btn::after {
+  content: '';
+  width: 44px; height: 44px;
+  background: var(--accent);
+  border-radius: 50%;
+  transition: all .2s;
+}
+.record-btn.recording {
+  border-color: var(--danger);
+  background: #fef2f2;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.record-btn.recording::after {
+  border-radius: 6px;
+  width: 28px; height: 28px;
+  background: var(--danger);
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+  50% { box-shadow: 0 0 0 16px rgba(239,68,68,0); }
+}
+.record-timer {
+  font-size: 42px;
+  font-weight: 300;
+  margin-top: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+}
+.record-hint {
+  color: var(--sub);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* 已录文件 */
+.file-list { list-style:none; }
+.file-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  gap: 12px;
+}
+.file-item:last-child { border-bottom:none; }
+.file-item .name {
+  flex:1;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.file-item .size { color: var(--sub); font-size:12px; }
+.file-item .status {
+  font-size:12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-done { background: #d1fae5; color: #065f46; }
+
+.btn {
+  padding: 10px 20px;
+  border:none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor:pointer;
+  transition: all .2s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+/* 拍照区 */
+.photo-grid {
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.photo-item {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow:hidden;
+  background: var(--border);
+  position: relative;
+}
+.photo-item img {
+  width:100%; height:100%;
+  object-fit: cover;
+}
+.photo-item .remove {
+  position:absolute;
+  top: 4px; right: 4px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.5);
+  color:#fff;
+  border:none;
+  font-size:14px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+}
+.camera-btn {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  background: var(--card);
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 6px;
+  color: var(--sub);
+  font-size: 13px;
+  transition: all .2s;
+}
+.camera-btn:hover { border-color: var(--accent); color: var(--accent); }
+.camera-btn svg { width:28px; height:28px; }
+
+/* 思维导图列表 */
+.mindmap-item {
+  display:flex;
+  align-items:center;
+  padding: 14px;
+  background: var(--card);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  cursor:pointer;
+  gap: 12px;
+  transition: all .2s;
+}
+.mindmap-item:active { transform: scale(.98); }
+.mindmap-item .icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--accent-light);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.mindmap-item .info { flex:1; min-width:0; }
+.mindmap-item .info .title {
+  font-weight: 600;
+  font-size: 15px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.mindmap-item .info .meta {
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 4px;
+}
+.badge {
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 思维导图详情 */
+.mindmap-detail {
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: var(--bg);
+  z-index:100;
+  overflow-y:auto;
+  padding: 20px;
+  display:none;
+}
+.mindmap-detail.open { display:block; }
+.mindmap-detail .back {
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  cursor:pointer;
+  background:none;
+  border:none;
+}
+.mindmap-content {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  line-height: 1.8;
+  font-size: 15px;
+}
+.mindmap-content h1 { font-size:1.5em; margin:.8em 0 .4em; }
+.mindmap-content h2 { font-size:1.25em; margin:.7em 0 .3em; color:var(--accent); }
+.mindmap-content h3 { font-size:1.1em; margin:.6em 0 .3em; }
+.mindmap-content h4 { font-size:1em; margin:.5em 0 .2em; }
+.mindmap-content ul, .mindmap-content ol { padding-left:1.5em; margin:.4em 0; }
+.mindmap-content li { margin:.2em 0; }
+.mindmap-content code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size:.9em;
+}
+.mindmap-content pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 16px;
+  border-radius: 10px;
+  overflow-x:auto;
+  margin:.6em 0;
+}
+
+/* 底部生成按钮 */
+.fab {
+  position:fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  border:none;
+  padding: 16px 40px;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor:pointer;
+  box-shadow: 0 4px 20px rgba(79,70,229,.4);
+  transition: all .2s;
+  z-index: 20;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+.fab:active { transform: translateX(-50%) scale(.95); }
+.fab:disabled { opacity: .4; }
+
+/* Toast */
+.toast {
+  position:fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  z-index: 200;
+  animation: fadeIn .2s;
+  pointer-events: none;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateX(-50%) translateY(-8px); } }
+
+/* 加载动画 */
+.spinner {
+  width: 24px; height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 生成中遮罩 */
+.overlay {
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,.4);
+  z-index:50;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.overlay.open { display:flex; }
+.overlay .box {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 32px;
+  text-align:center;
+}
+.overlay .box p { margin-top:16px; font-size:16px; font-weight:600; }
+.overlay .box .step { font-size:13px; color:var(--sub); margin-top:4px; }
+
+.empty {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--sub);
+  font-size: 15px;
+}
+.empty svg { width:64px; height:64px; opacity:.3; margin-bottom:12px; }
+
+/* 权限申请弹窗 */
+.permission-overlay {
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,.5);
+  z-index:150;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  animation: fadeIn .2s;
+}
+.permission-overlay.open { display:flex; }
+.permission-dialog {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  width: calc(100% - 48px);
+  max-width: 360px;
+  text-align:center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+}
+.permission-dialog .perm-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin: 0 auto 16px;
+  font-size: 30px;
+}
+.permission-dialog h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.permission-dialog .perm-desc {
+  font-size: 14px;
+  color: var(--sub);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.permission-dialog .perm-note {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 24px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+.permission-dialog .perm-actions {
+  display:flex;
+  gap: 12px;
+}
+.permission-dialog .perm-actions button {
+  flex:1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor:pointer;
+  transition: all .2s;
+  border:none;
+}
+.btn-deny {
+  background: #f3f4f6;
+  color: var(--sub);
+}
+.btn-deny:active { background: #e5e7eb; }
+.btn-allow {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-allow:active { background: #4338ca; }
+</style>
+<style>
+/* ===== 极简风覆盖层 ===== */
+:root {
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --text: #1f2937;
+  --sub: #6b7280;
+  --accent: #3b82f6;
+  --accent-light: #eff6ff;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --border: #e5e7eb;
+  --shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+nav {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+nav button {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  margin: 4px;
+  color: var(--sub);
+  font-weight: 500;
+}
+
+nav button.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  box-shadow: none;
+  transform: none;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  border-radius: 8px;
+  border: none;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: none;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: none;
+}
+
+.record-btn {
+  border: 2px solid var(--accent);
+  box-shadow: none;
+}
+
+.record-btn.recording {
+  border-color: var(--danger);
+  box-shadow: none;
+}
+
+.fab {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 14px rgba(59,130,246,.25);
+  font-weight: 600;
+}
+
+.mindmap-detail {
+  background: var(--bg);
+}
+
+.mindmap-content {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.permission-dialog {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+
+.toast {
+  background: #111827;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.back {
+  background: none;
+  color: var(--accent);
+  font-weight: 500;
+}
+</style>
+<style>
+/* ===== XMind 风格思维导图 ===== */
+.xmind-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+}
+.xmind-node {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.xmind-root-node {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-size: 18px;
+  padding: 12px 22px;
+}
+.xmind-branches {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+.xmind-branch {
+  flex: 1 1 220px;
+  min-width: 200px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+}
+.xmind-branch-title {
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.xmind-sub {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--accent-light);
+}
+.xmind-leaf {
+  color: var(--sub);
+  font-size: 14px;
+  padding: 2px 0;
+}
+</style>
+
+
+</head>
+<body>
+
+<nav>
+  <button onclick="switchTab('record')" class="active" id="nav-record">🎙️ 录音</button>
+  <button onclick="switchTab('photo')" id="nav-photo">📷 拍照</button>
+  <button onclick="switchTab('mindmap')" id="nav-mindmap">🧠 导图</button>
+</nav>
+
+<!-- 录音页 -->
+<div class="page active" id="page-record">
+  <div class="card" id="recordCard">
+    <div class="record-area" id="recordArea">
+      <button class="record-btn" id="recordBtn" onclick="toggleRecord()"></button>
+      <div class="record-timer" id="recordTimer">00:00</div>
+      <div class="record-hint" id="recordHint">点击开始录音</div>
+    </div>
+    <!-- 降级：浏览器不支持录音时显示文件上传 -->
+    <div id="uploadFallback" style="display:none; text-align:center; padding: 20px 0;">
+      <p style="color:var(--sub); font-size:14px; margin-bottom:16px;">当前浏览器不支持页面内录音</p>
+      <button class="btn btn-primary" onclick="document.getElementById('micCapture').click()" style="width:100%; max-width:280px; padding:16px; font-size:16px; margin-bottom:12px;">
+        🎙️ 调用手机录音机
+      </button>
+      <p style="color:#9ca3af; font-size:12px; margin-bottom:20px;">点击后打开系统录音App，录完自动返回</p>
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span style="font-size:12px; color:var(--sub);">或者</span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+      <label style="display:inline-block; background:#f3f4f6; color:var(--text); padding:14px 32px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer;">
+        📁 选择已有录音文件
+        <input type="file" style="display:none" onchange="handleAudioFile(this)" multiple>
+      </label>
+      <p style="color:#9ca3af; font-size:12px; margin-top:12px;">支持 mp3 / m4a / wav 等格式</p>
+      <input type="file" id="micCapture" accept="audio/*" capture style="display:none" onchange="handleAudioFile(this)">
+    </div>
+  </div>
+
+  <div class="card">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h3 style="margin:0;">📁 录音文件 (<span id="audioCount">0</span>)</h3>
+      <button class="btn btn-primary btn-sm" id="mergeAudioBtn" onclick="generateSelectedAudioMindmap()" disabled style="padding:8px 14px;">合并选中录音生成导图</button>
+    </div>
+    <ul class="file-list" id="audioList">
+      <li class="empty" style="padding:20px 0; font-size:13px; color:var(--sub)">还没有录音文件</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 拍照页 -->
+<div class="page" id="page-photo">
+  <div class="card">
+    <h3>📸 课堂照片</h3>
+    <div class="photo-grid" id="photoGrid">
+      <button class="camera-btn" onclick="document.getElementById('cameraInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="14" r="3"/><path d="M9 3h6l2 3H7z"/></svg>
+        拍照/选图
+      </button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(this)">
+  </div>
+</div>
+
+<!-- 思维导图页 -->
+<div class="page" id="page-mindmap">
+  <div id="mindmapList">
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="6" r="2"/><path d="M12 8v3M12 16v2M8 14h8M6 12h12"/></svg>
+      <p>还没有思维导图</p>
+      <p style="font-size:13px;margin-top:4px;">录完音拍完照，点"生成"按钮</p>
+    </div>
+  </div>
+</div>
+
+<!-- 思维导图详情弹窗 -->
+<div class="mindmap-detail" id="mindmapDetail">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:20px;">
+    <button class="back" onclick="closeDetail()">← 返回列表</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-sm" onclick="editCurrentTitle()" style="background:#3b82f6;color:#fff;padding:8px 16px;">✏️ 修改标题</button>
+        <button class="btn btn-sm" onclick="confirmLocalSave()" style="background:#059669;color:#fff;padding:8px 16px;">💾 确认保存到电脑</button>
+        <button class="btn btn-sm btn-primary" onclick="shareToWenliang()" style="padding:8px 16px;">📤 发给温凉</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteCurrentMindmap()" style="padding:8px 16px;">🗑 删除</button>
+    </div>
+  </div>
+  <div class="mindmap-content" id="mindmapContent"></div>
+</div>
+
+<!-- 生成按钮 -->
+<button class="fab" id="generateBtn" onclick="generateMindmap()" disabled>
+  ✨ 生成思维导图
+</button>
+
+<!-- 权限申请弹窗 -->
+<div class="permission-overlay" id="permOverlay">
+  <div class="permission-dialog">
+    <div class="perm-icon">🎙️</div>
+    <h3>需要访问麦克风</h3>
+    <p class="perm-desc">课堂笔记助手需要使用麦克风来录制课堂音频，以便后续生成思维导图。</p>
+    <p class="perm-note">🔒 录音数据仅在本地处理，不会上传至第三方</p>
+    <div class="perm-actions">
+      <button class="btn-deny" onclick="denyMic()">暂不授权</button>
+      <button class="btn-allow" onclick="allowMic()">允许使用</button>
+    </div>
+  </div>
+</div>
+
+<!-- 生成中遮罩 -->
+<div class="overlay" id="overlay">
+  <div class="box">
+    <div class="spinner"></div>
+    <p id="overlayText">正在生成思维导图...</p>
+    <div class="step" id="overlayStep"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+// ===== 全局状态 =====
+const API = '';
+let audioFiles = [];    // {name, blob, size, duration, uploaded, fileId, text}
+let photoFiles = [];    // {name, blob, dataUrl, uploaded, fileId, knowledge}
+let selectedAudioIndices = new Set();
+let isRecording = false;
+let mediaRecorder = null;
+let recordStartTime = 0;
+let recordTimer = null;
+
+// ===== 导航切换 =====
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  if (tab === 'mindmap') loadMindmapList();
+}
+
+// ===== Toast =====
+function showToast(msg, ms=2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', ms);
+}
+
+// ===== 录音 =====
+function toggleRecord() {
+  if (!isRecording) {
+    // 先显示权限申请弹窗
+    document.getElementById('permOverlay').classList.add('open');
+  } else {
+    stopRecording();
+  }
+}
+
+function allowMic() {
+  document.getElementById('permOverlay').classList.remove('open');
+  startRecording();
+}
+
+function denyMic() {
+  document.getElementById('permOverlay').classList.remove('open');
+  showToast('需要使用麦克风才能录音哦', 2500);
+}
+
+async function startRecording() {
+  try {
+    // 检查浏览器支持
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showToast('当前浏览器不支持录音，请使用 Chrome 或 Edge');
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      showToast('当前浏览器不支持录音功能');
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // 检测浏览器支持的音频格式
+    let mimeType = '';
+    const types = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/aac',
+    ];
+    for (const t of types) {
+      if (MediaRecorder.isTypeSupported(t)) {
+        mimeType = t;
+        break;
+      }
+    }
+
+    const opts = mimeType ? { mimeType } : {};
+    mediaRecorder = new MediaRecorder(stream, opts);
+      const chunks = [];
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const duration = Math.round((Date.now() - recordStartTime) / 1000);
+        const name = `录音_${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}`;
+        audioFiles.push({
+          name, blob,
+          size: blob.size,
+          duration,
+          uploaded: false,
+          fileId: null,
+          text: null,
+        });
+        renderAudioList();
+        updateGenerateBtn();
+      };
+      mediaRecorder.start(1000);
+      isRecording = true;
+      recordStartTime = Date.now();
+      updateRecordUI();
+      recordTimer = setInterval(updateRecordTimer, 200);
+    } catch(e) {
+      console.error('录音失败:', e.name, e.message);
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        showToast('麦克风权限被拒绝，请在系统设置中允许');
+      } else if (e.name === 'NotFoundError') {
+        showToast('未检测到麦克风设备');
+      } else {
+        showToast('录音启动失败: ' + (e.message || '未知错误'));
+      }
+    }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  isRecording = false;
+  clearInterval(recordTimer);
+  recordTimer = null;
+  updateRecordUI();
+}
+
+function updateRecordUI() {
+  const btn = document.getElementById('recordBtn');
+  const hint = document.getElementById('recordHint');
+  if (isRecording) {
+    btn.classList.add('recording');
+    hint.textContent = '点击停止录音';
+    hint.style.color = 'var(--danger)';
+  } else {
+    btn.classList.remove('recording');
+    hint.textContent = '点击开始录音';
+    hint.style.color = '';
+    document.getElementById('recordTimer').textContent = '00:00';
+  }
+}
+
+function updateRecordTimer() {
+  const s = Math.round((Date.now() - recordStartTime) / 1000);
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  document.getElementById('recordTimer').textContent =
+    String(m).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + 'KB';
+  return (bytes/(1024*1024)).toFixed(1) + 'MB';
+}
+
+function formatDuration(s) {
+  const m = Math.floor(s/60);
+  const ss = s % 60;
+  return m + '分' + ss + '秒';
+}
+
+function renderAudioList() {
+  const list = document.getElementById('audioList');
+  document.getElementById('audioCount').textContent = audioFiles.length;
+  if (audioFiles.length === 0) {
+    list.innerHTML = '<li class="empty" style="padding:20px 0; font-size:13px; color:var(--sub)">还没有录音文件</li>';
+    return;
+  }
+  list.innerHTML = audioFiles.map((f, i) => `
+    <li class="file-item">
+      <span style="font-size:18px;">🎵</span>
+      <span class="name">${f.name}</span>
+      <span class="size">${formatDuration(f.duration)} · ${formatSize(f.size)}</span>
+      <span class="status ${f.uploaded ? 'status-done' : 'status-pending'}">${f.uploaded ? '已转写' : '待上传'}</span>
+      <button class="btn btn-sm btn-danger" onclick="removeAudio(${i})" style="padding:4px 10px; font-size:12px;">删</button>
+    </li>
+  `).join('');
+}
+
+function removeAudio(i) {
+  audioFiles.splice(i, 1);
+  selectedAudioIndices.clear();
+  renderAudioList();
+  updateGenerateBtn();
+}
+
+// ===== 拍照 =====
+function handlePhotos(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      photoFiles.push({
+        name: file.name,
+        blob: file,
+        dataUrl: e.target.result,
+        uploaded: false,
+        fileId: null,
+        knowledge: null,
+      });
+      renderPhotoGrid();
+      updateGenerateBtn();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderPhotoGrid() {
+  const grid = document.getElementById('photoGrid');
+  grid.innerHTML = photoFiles.map((f, i) => `
+    <div class="photo-item">
+      <img src="${f.dataUrl}" alt="${f.name}">
+      <button class="remove" onclick="removePhoto(${i})">×</button>
+    </div>
+  `).join('') + `
+    <button class="camera-btn" onclick="document.getElementById('cameraInput').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="14" r="3"/><path d="M9 3h6l2 3H7z"/></svg>
+      添加
+    </button>
+  `;
+}
+
+function removePhoto(i) {
+  photoFiles.splice(i, 1);
+  renderPhotoGrid();
+  updateGenerateBtn();
+}
+
+// ===== 生成按钮状态 =====
+function updateGenerateBtn() {
+  const hasAudio = audioFiles.length > 0;
+  const hasPhoto = photoFiles.length > 0;
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = !hasAudio && !hasPhoto;
+  if (hasAudio || hasPhoto) {
+    btn.textContent = '✨ 生成思维导图';
+  }
+}
+
+// ===== 覆盖层 =====
+function showOverlay(text, step) {
+  document.getElementById('overlayText').textContent = text;
+  document.getElementById('overlayStep').textContent = step || '';
+  document.getElementById('overlay').classList.add('open');
+}
+function hideOverlay() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ===== 核心：上传并生成思维导图 =====
+async function generateMindmap() {
+  if (audioFiles.length === 0 && photoFiles.length === 0) return;
+
+  showOverlay('准备上传...', '');
+
+  // 1. 上传所有音频
+  let transcriptText = '';
+  for (let i = 0; i < audioFiles.length; i++) {
+    const f = audioFiles[i];
+    if (f.uploaded && f.text) {
+      transcriptText += f.text + '\n\n';
+      continue;
+    }
+    showOverlay('转写录音中...', `第 ${i+1}/${audioFiles.length} 个`);
+    try {
+      const form = new FormData();
+      form.append('file', f.blob, f.name + '.webm');
+      const res = await fetch(API + '/api/audio/upload', { method:'POST', body:form });
+      const data = await res.json();
+      if (data.text) {
+        f.uploaded = true;
+        f.fileId = data.file_id;
+        f.text = data.text;
+        transcriptText += data.text + '\n\n';
+      }
+    } catch(e) {
+      showToast('录音上传失败: ' + e.message);
+      hideOverlay();
+      return;
+    }
+  }
+
+  // 2. 上传所有图片
+  let imageTexts = [];
+  for (let i = 0; i < photoFiles.length; i++) {
+    const f = photoFiles[i];
+    if (f.uploaded && f.knowledge) {
+      imageTexts.push(f.knowledge);
+      continue;
+    }
+    showOverlay('识别图片中...', `第 ${i+1}/${photoFiles.length} 张`);
+    try {
+      const form = new FormData();
+      form.append('file', f.blob, f.name);
+      const res = await fetch(API + '/api/image/upload', { method:'POST', body:form });
+      const data = await res.json();
+      if (data.text) {
+        f.uploaded = true;
+        f.fileId = data.file_id;
+        f.knowledge = data.text;
+        imageTexts.push(data.text);
+      }
+    } catch(e) {
+      showToast('图片上传失败: ' + e.message);
+      hideOverlay();
+      return;
+    }
+  }
+
+  // 3. 生成思维导图
+  showOverlay('生成思维导图中...', 'AI正在整理知识点');
+  try {
+    const res = await fetch(API + '/api/mindmap/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript_text: transcriptText,
+        image_texts: imageTexts,
+          image_ids: photoFiles.filter(f => f.fileId).map(f => f.fileId),
+      }),
+    });
+    const data = await res.json();
+    hideOverlay();
+
+    if (data.error) {
+      showToast('生成失败: ' + data.error);
+      return;
+    }
+
+    renderAudioList();
+    renderPhotoGrid();
+    updateGenerateBtn();
+
+    // 切换到导图页并打开详情
+    switchTab('mindmap');
+    await loadMindmapList();
+    setTimeout(() => openMindmap(data.id || (data.subject + '-' + data.title)), 300);
+
+    showToast('思维导图生成完成！');
+  } catch(e) {
+    hideOverlay();
+    showToast('生成失败: ' + e.message);
+  }
+}
+
+
+async function generateSingleAudioMindmap(i) {
+  const f = audioFiles[i];
+  if (!f) return;
+
+  showOverlay('转写录音中...', f.name);
+
+  if (!f.uploaded || !f.text) {
+    try {
+      const form = new FormData();
+      form.append('file', f.blob, f.name + '.webm');
+      const res = await fetch(API + '/api/audio/upload', { method:'POST', body:form });
+      const data = await res.json();
+      if (!data.text) {
+        hideOverlay();
+        showToast('转写失败: ' + (data.error || '未返回转写文字'));
+        return;
+      }
+      f.uploaded = true;
+      f.fileId = data.file_id;
+      f.text = data.text;
+      renderAudioList();
+    } catch(e) {
+      hideOverlay();
+      showToast('录音上传失败: ' + e.message);
+      return;
+    }
+  }
+
+  showOverlay('生成思维导图中...', f.name);
+  try {
+    const res = await fetch(API + '/api/mindmap/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript_text: f.text,
+        image_texts: [],
+        image_ids: [],
+      }),
+    });
+    const data = await res.json();
+    hideOverlay();
+
+    if (data.error) {
+      showToast('生成失败: ' + data.error);
+      return;
+    }
+
+    switchTab('mindmap');
+    await loadMindmapList();
+    setTimeout(() => openMindmap(data.id || (data.subject + '-' + data.title)), 300);
+    showToast('单条录音导图生成完成！');
+  } catch(e) {
+    hideOverlay();
+    showToast('生成失败: ' + e.message);
+  }
+}
+
+
+// ===== 思维导图列表 =====
+async function loadMindmapList() {
+  try {
+    const res = await fetch(API + '/api/mindmap/list');
+    const data = await res.json();
+    const list = document.getElementById('mindmapList');
+    if (!data.mindmaps || data.mindmaps.length === 0) {
+      list.innerHTML = `<div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="6" r="2"/><path d="M12 8v3M12 16v2M8 14h8M6 12h12"/></svg>
+        <p>还没有思维导图</p>
+        <p style="font-size:13px;margin-top:4px;">录完音拍完照，点"生成"按钮</p>
+      </div>`;
+      return;
+    }
+    list.innerHTML = data.mindmaps.map(m => `
+      <div class="mindmap-item" onclick="openMindmap('${m.id}')">
+        <div class="icon">${getSubjectIcon(m.subject)}</div>
+        <div class="info">
+          <div class="title">${m.title}</div>
+          <div class="meta">${m.date} · <span class="badge">${m.subject}</span></div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteMindmap('${m.id}')" style="padding:6px 12px; font-size:12px; flex-shrink:0;">删除</button>
+      </div>
+    `).join('');
+  } catch(e) { /* ignore */ }
+}
+
+function getSubjectIcon(subject) {
+  const map = {
+    '数学': '📐', '物理': '⚛️', '化学': '🧪', '生物': '🧬',
+    '语文': '📖', '英语': '🌐', '历史': '📜', '地理': '🌍',
+    '政治': '⚖️', '计算机': '💻', '音乐': '🎵', '美术': '🎨',
+  };
+  return map[subject] || '📝';
+}
+
+// ===== 思维导图详情 =====
+let currentMindmapId = null;
+let currentMindmapMd = '';
+let currentMindmapTitle = '';
+
+async function openMindmap(id) {
+  try {
+    const res = await fetch(API + '/api/mindmap/' + id);
+    const data = await res.json();
+    if (data.error) { showToast(data.error); return; }
+
+    currentMindmapId = id;
+    currentMindmapMd = data.mindmap;
+    currentMindmapTitle = data.title || '';
+    document.getElementById('mindmapContent').innerHTML = renderXMind(data.mindmap);
+    document.getElementById('mindmapDetail').classList.add('open');
+  } catch(e) { showToast('加载失败'); }
+}
+
+function closeDetail() {
+  currentMindmapId = null;
+  currentMindmapMd = '';
+  currentMindmapTitle = '';
+
+
+async function editCurrentTitle() {
+  if (!currentMindmapId) return;
+  const oldTitle = currentMindmapTitle || '未命名';
+  const newTitle = prompt('请输入新的思维导图标题：', oldTitle);
+  if (!newTitle || !newTitle.trim()) return;
+
+  try {
+    const res = await fetch(API + '/api/mindmap/' + currentMindmapId + '/title', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle.trim() }),
+    });
+    const data = await res.json();
+    if (data.status === 'updated') {
+      currentMindmapTitle = data.title;
+      showToast(data.local_updated ? '标题已修改，本地文件已同步' : '标题已修改', 3000);
+      await openMindmap(currentMindmapId);
+      loadMindmapList();
+    } else {
+      showToast('修改失败: ' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    showToast('修改失败，请重试');
+  }
+}
+
+  document.getElementById('mindmapDetail').classList.remove('open');
+}
+
+
+async function confirmLocalSave() {
+  if (!currentMindmapId) return;
+  try {
+    const res = await fetch(API + '/api/mindmap/' + currentMindmapId + '/confirm-local', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'saved_local') {
+      showToast('已保存到 ' + (data.path || data.filename || '本地目录'), 3000);
+    } else {
+      showToast('保存失败: ' + (data.error || '未知错误'), 3000);
+    }
+  } catch(e) {
+    showToast('保存失败，请重试', 3000);
+  }
+}
+
+
+async function shareToWenliang() {
+  if (!currentMindmapId) return;
+  try {
+    const res = await fetch(API + '/api/mindmap/' + currentMindmapId + '/share', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'shared') {
+      showToast('已发送！在对话框说「看看」就能看到', 3000);
+    } else {
+      showToast('发送失败: ' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    showToast('发送失败，请重试');
+  }
+}
+
+async function deleteMindmap(id) {
+  if (!confirm('确定要删除这个思维导图吗？')) return;
+  try {
+    const res = await fetch(API + '/api/mindmap/' + id, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.status === 'deleted') {
+      showToast('已删除');
+      loadMindmapList();
+    }
+  } catch(e) { showToast('删除失败'); }
+}
+
+async function deleteCurrentMindmap() {
+  if (!currentMindmapId) return;
+  await deleteMindmap(currentMindmapId);
+  closeDetail();
+}
+
+
+// ===== XMind 风格导图渲染 =====
+function renderXMind(md) {
+  const lines = (md || '').split('\n');
+  const root = { text: '思维导图', children: [] };
+  let h2 = null;
+  let h3 = null;
+
+  for (const line of lines) {
+    if (/^#\s+/.test(line)) {
+      root.text = line.replace(/^#\s+/, '').trim() || '思维导图';
+    } else if (/^##\s+/.test(line)) {
+      h2 = { text: line.replace(/^##\s+/, '').trim(), children: [] };
+      root.children.push(h2);
+      h3 = null;
+    } else if (/^###\s+/.test(line)) {
+      h3 = { text: line.replace(/^###\s+/, '').trim(), leaves: [] };
+      if (!h2) {
+        h2 = { text: '要点', children: [] };
+        root.children.push(h2);
+      }
+      h2.children.push(h3);
+    } else if (/^-\s+/.test(line)) {
+      const leaf = line.replace(/^-\s+/, '').trim();
+      if (h3) {
+        h3.leaves.push(leaf);
+      } else if (h2) {
+        h2.children.push({ text: leaf, leaves: [] });
+      } else {
+        root.children.push({ text: leaf, children: [] });
+      }
+    }
+  }
+
+  const branchHtml = root.children.map(branch => {
+    const subHtml = (branch.children || []).map(sub => `
+      <div class="xmind-sub">
+        <div class="xmind-node">${sub.text}</div>
+        <div>${(sub.leaves || []).map(leaf => `<div class="xmind-leaf">· ${leaf}</div>`).join('')}</div>
+      </div>
+    `).join('');
+    return `
+      <div class="xmind-branch">
+        <div class="xmind-branch-title">${branch.text}</div>
+        ${subHtml}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="xmind-root">
+      <div class="xmind-node xmind-root-node">${root.text}</div>
+      <div class="xmind-branches">${branchHtml}</div>
+    </div>
+  `;
+}
+
+
+// ===== 简易 Markdown 渲染 =====
+function renderMarkdown(md) {
+  let html = md
+    // 代码块
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // 行内代码
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // 公式 $$...$$
+    .replace(/\$\$([\s\S]*?)\$\$/g, '<pre><code>$1</code></pre>')
+    // 标题
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // 粗体
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 无序列表
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+    // 有序列表
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // 分隔线
+    .replace(/^---$/gm, '<hr>')
+    // 段落
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  return '<p>' + html + '</p>';
+}
+
+// ===== 初始加载 =====
+(function init() {
+  // 检测浏览器录音支持
+  const supportsRecording = navigator.mediaDevices
+    && navigator.mediaDevices.getUserMedia
+    && typeof MediaRecorder !== 'undefined';
+
+  if (!supportsRecording) {
+    document.getElementById('recordArea').style.display = 'none';
+    document.getElementById('uploadFallback').style.display = 'block';
+  }
+
+  loadMindmapList();
+})();
+
+// ===== 降级：文件上传 =====
+function handleAudioFile(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    const name = file.name.replace(/\.[^.]+$/, '');
+    const size = file.size;
+    audioFiles.push({
+      name,
+      blob: file,
+      size,
+      duration: 0,
+      uploaded: false,
+      fileId: null,
+      text: null,
+    });
+  });
+  renderAudioList();
+  updateGenerateBtn();
+  showToast(`已添加 ${files.length} 个音频文件`);
+  input.value = '';
+}
+
+
+function toggleAudioSelect(i, checked) {
+  if (checked) {
+    selectedAudioIndices.add(i);
+  } else {
+    selectedAudioIndices.delete(i);
+  }
+  updateMergeAudioBtn();
+}
+
+function updateMergeAudioBtn() {
+  const btn = document.getElementById('mergeAudioBtn');
+  if (btn) btn.disabled = selectedAudioIndices.size === 0;
+}
+
+async function generateSelectedAudioMindmap() {
+  const indices = Array.from(selectedAudioIndices).sort((a, b) => a - b);
+  if (indices.length === 0) {
+    showToast('请先勾选一条或多条录音');
+    return;
+  }
+
+  let transcriptText = '';
+  for (let n = 0; n < indices.length; n++) {
+    const i = indices[n];
+    const f = audioFiles[i];
+    if (!f) continue;
+    showOverlay('转写录音中...', `第 ${n + 1}/${indices.length} 个：${f.name}`);
+    if (!f.uploaded || !f.text) {
+      try {
+        const form = new FormData();
+        form.append('file', f.blob, f.name + '.webm');
+        const res = await fetch(API + '/api/audio/upload', { method:'POST', body:form });
+        const data = await res.json();
+        if (!data.text) {
+          hideOverlay();
+          showToast('转写失败: ' + (data.error || '未返回转写文字'));
+          return;
+        }
+        f.uploaded = true;
+        f.fileId = data.file_id;
+        f.text = data.text;
+      } catch(e) {
+        hideOverlay();
+        showToast('录音上传失败: ' + e.message);
+        return;
+      }
+    }
+    transcriptText += f.text + '\n\n';
+  }
+
+  renderAudioList();
+
+  showOverlay('生成合并思维导图中...', `已选 ${indices.length} 条录音`);
+  try {
+    const res = await fetch(API + '/api/mindmap/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript_text: transcriptText,
+        image_texts: [],
+        image_ids: [],
+      }),
+    });
+    const data = await res.json();
+    hideOverlay();
+
+    if (data.error) {
+      showToast('生成失败: ' + data.error);
+      return;
+    }
+
+    switchTab('mindmap');
+    await loadMindmapList();
+    setTimeout(() => openMindmap(data.id || (data.subject + '-' + data.title)), 300);
+    showToast('选中录音合并导图生成完成！');
+  } catch(e) {
+    hideOverlay();
+    showToast('生成失败: ' + e.message);
+  }
+}
+
+
+// 修改 renderAudioList，如果 duration 为 0 则不显示时长
+const _originalRenderAudioList = renderAudioList;
+renderAudioList = function() {
+  const list = document.getElementById('audioList');
+  document.getElementById('audioCount').textContent = audioFiles.length;
+  if (audioFiles.length === 0) {
+    list.innerHTML = '<li class="empty" style="padding:20px 0; font-size:13px; color:var(--sub)">还没有录音文件</li>';
+    return;
+  }
+  list.innerHTML = audioFiles.map((f, i) => `
+    <li class="file-item">
+        <input type="checkbox" ${selectedAudioIndices.has(i) ? 'checked' : ''} onchange="toggleAudioSelect(${i}, this.checked)" style="width:18px;height:18px;accent-color:#3b82f6;flex-shrink:0;">
+      <span style="font-size:18px;">🎵</span>
+      <span class="name">${f.name}</span>
+      <span class="size">${f.duration ? formatDuration(f.duration) + ' · ' : ''}${formatSize(f.size)}</span>
+      <span class="status ${f.uploaded ? 'status-done' : 'status-pending'}">${f.uploaded ? '已转写' : '待上传'}</span>
+        <button class="btn btn-sm" onclick="generateSingleAudioMindmap(${i})" style="background:#059669;color:#fff;padding:4px 10px;font-size:12px;">生成导图</button>
+      <button class="btn btn-sm btn-danger" onclick="removeAudio(${i})" style="padding:4px 10px; font-size:12px;">删</button>
+    </li>
+  `).join('');
+  updateMergeAudioBtn();
+};
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/app/sw.js');
+}
+</script>
+</body>
+</html>
