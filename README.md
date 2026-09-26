@@ -149,6 +149,37 @@ node tools/screenshot.mjs http://127.0.0.1:8000/app/ docs
 - 本项目由 **AI（DeepSeek Harness）生成**，人类负责需求定义与验收。代码未逐字复制任何第三方项目。
 - 密钥与路径全部外置：密钥走环境变量或密钥文件，导出目录走 `CLASSNOTE_EXPORT_DIR`。
 
+## 数据流向与隐私
+
+### 密钥怎么存
+
+- 所有密钥**只从环境变量读取**（或用你指定的「密钥文件」），**源码中不含任何硬编码密钥**：
+  `DASHSCOPE_API_KEY` / `DEEPSEEK_API_KEY` / `WECHAT_APPID` / `WECHAT_APPSECRET` / `WECHAT_TOKEN`。
+- 密钥只用于向对应厂商请求时放进 `Authorization` 头（或作为换取微信 `access_token` 的参数），
+  不会写入日志、不会回传到本服务以外的地方。
+- 可选：用 `DASHSCOPE_KEY_FILE` / `DEEPSEEK_KEY_FILE` / `DEEPSEEK_MODEL_FILE` 指向「只放密钥/模型名的文件」，
+  便于用文件而不是环境变量管理凭据。
+
+### 数据去哪了
+
+| 数据 | 本机落盘 | 是否外发 |
+| --- | --- | --- |
+| 录音（网页上传 / 微信语音） | `classnote-backend/uploads/` | ✅ **会上传到阿里云百炼 Files API**（转写所必需） |
+| 图片（网页上传 / 微信图片） | `classnote-backend/uploads/` | ✅ 以 **base64 内联**在请求里发给 DeepSeek（无 Key 时回退百炼）做识图 |
+| 转写文本 / 图片知识点 / 手打笔记 | 微信入口：`data/wechat_sessions.json` | ✅ 生成导图时作为提示词发给 DeepSeek（或回退百炼） |
+| 生成的思维导图 | `mindmaps/`（列表与详情） | ❌ 不外发 |
+| 「保存到本机」的导出 | `data/exports/`（可用 `CLASSNOTE_EXPORT_DIR` 改） | ❌ 不外发 |
+| 「分享」的 Markdown | `shared/` | ❌ 不外发 |
+| 微信通信 | — | 仅与 `api.weixin.qq.com` 交互（换取 `access_token`、下载你发来的语音/图片） |
+
+**明确说明**：
+
+- 除上表中的**阿里云百炼、DeepSeek、微信官方接口**之外，本项目**不向任何其他地方发送数据**；
+  没有遥测、没有使用统计、没有第三方分析。
+- 本地文件都在 `classnote-backend/` 内（已在 `.gitignore` 中排除），随时可自行删除。
+- ⚠️ **敏感内容请注意**：录音会上传百炼、图片会发给 DeepSeek/百炼做识别——这两家都是**云端 API**，
+  涉密或隐私材料不要用它处理；如需完全离线，可考虑自建本地 ASR/视觉模型并替换 `services/` 下的对应实现。
+
 ## 安全注意事项
 
 - **密钥管理**：`DASHSCOPE_API_KEY` / `DEEPSEEK_API_KEY` / `WECHAT_APPSECRET` 等一律不入库，
